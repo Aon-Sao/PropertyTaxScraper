@@ -14,6 +14,7 @@ Note that the univers data has outdated sales history and that the sales histori
 @author: noah
 """
 import bs4
+import io
 import pandas
 import csv
 import os
@@ -55,7 +56,7 @@ def main():
         tableString = ""
         for j in tables:
             tableString += str(j)
-        dataFrames = pandas.read_html(tableString)  # passing literals is deprecated
+        dataFrames = pandas.read_html(io.StringIO(tableString))  # passing literals is deprecated
         # frameCount = len(dataFrames)
 
         # print(combinedData)
@@ -71,16 +72,21 @@ def main():
 
     # write the csv file, acc. to https://devenum.com/how-to-write-list-of-dictionaries-to-csv-in-python/
     # TODO: deduplicate the dictionary and keep the most informative entries
-    highest_key_count = 0
-    index = 0
-    for i in range(len(combinedData)):
-        if (d_len := len(combinedData[i].keys())) < highest_key_count:
-            highest_key_count = d_len
-            index = i
+    newData = list()
+    presentBool = False
+    for sub_dict in combinedData:
+        for d in newData:
+            if d["AscentID"] == sub_dict["AscentID"]:
+                for k, v in sub_dict.items():
+                    d[k] = v
+                presentBool = True
+        if not presentBool:
+            newData.append({k: v for k, v in sub_dict.items()})
+
     with open("./data/ascent_and_univers_data.csv", "a") as ascentUniversData:
-        csvwriter = csv.DictWriter(ascentUniversData, combinedData[index].keys(), extrasaction='ignore')
+        csvwriter = csv.DictWriter(ascentUniversData, newData[0].keys(), extrasaction='ignore')
         csvwriter.writeheader()
-        csvwriter.writerows(combinedData)
+        csvwriter.writerows(newData)
 
 
 if __name__ == "__main__":
