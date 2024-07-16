@@ -13,7 +13,7 @@ Note that the univers data has outdated sales history and that the sales histori
 
 @author: noah
 """
-
+import bs4
 import pandas
 import csv
 import os
@@ -48,10 +48,17 @@ def main():
         # print(combinedData)
 
         # open the html file for the ith dictionary
+        html_file = ascentData[i]["ParcelNumber"] + "_" + ascentData[i]["SiteAddress"] + ".html"
+        with open(f"data/{html_file}", 'r') as f:
+            soup = bs4.BeautifulSoup(f, features='html.parser')
+        tables = soup.find_all('table')
+        tableString = ""
+        for j in tables:
+            tableString += str(j)
+        dataFrames = pandas.read_html(tableString)  # passing literals is deprecated
+        # frameCount = len(dataFrames)
 
-        dataFrames = pandas.read_html(ascentData[i]["ParcelNumber"] + "_" + ascentData[i]["SiteAddress"] + ".html")
-        frameCount = len(dataFrames)
-
+        # print(combinedData)
         # add info to the ith dictionary
         # adding info to list of dictionaries: https://www.askpython.com/python/list/list-of-dictionaries
         combinedData[i]["UniversID"] = dataFrames[3].iat[2, 0]
@@ -63,9 +70,15 @@ def main():
         # print(dataRow)
 
     # write the csv file, acc. to https://devenum.com/how-to-write-list-of-dictionaries-to-csv-in-python/
-    keys = combinedData[0].keys()
+    # TODO: deduplicate the dictionary and keep the most informative entries
+    highest_key_count = 0
+    index = 0
+    for i in range(len(combinedData)):
+        if (d_len := len(combinedData[i].keys())) < highest_key_count:
+            highest_key_count = d_len
+            index = i
     with open("./data/ascent_and_univers_data.csv", "a") as ascentUniversData:
-        csvwriter = csv.DictWriter(ascentUniversData, keys)
+        csvwriter = csv.DictWriter(ascentUniversData, combinedData[index].keys(), extrasaction='ignore')
         csvwriter.writeheader()
         csvwriter.writerows(combinedData)
 
