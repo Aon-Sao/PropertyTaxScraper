@@ -4,6 +4,7 @@ import csv
 import json
 import pandas
 import requests
+from datetime import datetime
 
 
 class Exception404(Exception):
@@ -14,7 +15,7 @@ def query_ascent_data():
     BASE_URL = 'https://ascent.racinecounty.com'
     CALEDONIA_DISTRICT_ID = 609
     START_DATE = "1/1/2021"
-    END_DATE = "7/30/2022"
+    END_DATE = datetime.today().strftime("%m/%d/%Y")
 
     session = requests.Session()
     session.get('https://ascent.racinecounty.com/LandRecords/PropertyListing/RealEstateTaxParcel#/Search')
