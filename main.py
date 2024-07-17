@@ -1,8 +1,6 @@
 import io
-
 import bs4
 import csv
-
 import json
 import pandas
 import requests
@@ -158,5 +156,12 @@ def process_and_merge_datasets():
         writer.writerows(combinedData)
 
 
-if __name__ == "__main__":
+def main():
+    query_univers_data()
+    process_ascent_data_to_csv()
+    query_univers_data()
     process_and_merge_datasets()
+
+
+if __name__ == "__main__":
+    main()
