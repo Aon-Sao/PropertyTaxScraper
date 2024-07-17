@@ -1,25 +1,20 @@
+#!/usr/bin/env python
+
 import io
 import bs4
 import csv
 import json
 import pandas
 import requests
-from datetime import datetime
-
-
-class Exception404(Exception):
-    pass
+from config import *
 
 
 def query_ascent_data():
-    BASE_URL = 'https://ascent.racinecounty.com'
-    CALEDONIA_DISTRICT_ID = 609
-    START_DATE = "1/1/2021"
-    END_DATE = datetime.today().strftime("%m/%d/%Y")
-
+    """Finds how many sales have been made, retrieves data for all of them,
+    and writes it to a single JSON file"""
     session = requests.Session()
-    session.get('https://ascent.racinecounty.com/LandRecords/PropertyListing/RealEstateTaxParcel#/Search')
-    session.get('https://ascent.racinecounty.com/LandRecords/PropertyListing/SalesHistoryReport')
+    session.get(f'{BASE_URL}/LandRecords/PropertyListing/RealEstateTaxParcel#/Search')
+    session.get(f'{BASE_URL}/LandRecords/PropertyListing/SalesHistoryReport')
     query_params = {
         "page": 1,
         "districtID": CALEDONIA_DISTRICT_ID,
@@ -34,14 +29,14 @@ def query_ascent_data():
         "Host": "ascent.racinecounty.com",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15",
         "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://ascent.racinecounty.com/LandRecords/PropertyListing/SalesHistoryReport",
+        "Referer": f"{BASE_URL}/LandRecords/PropertyListing/SalesHistoryReport",
         "Connection": "keep-alive"
     }
 
     def get_number_of_sales():
         """Makes an API call to find the number of sales records
             :return int
-        >>> isinstance(get_number_of_sales(), int)
+        >>> isinstance(get_number_of_sales(), int)  # This is a 'doctest' btw
         True
         """
         url = f"{BASE_URL}/LandRecords/api/SalesHistoryService"
@@ -49,11 +44,12 @@ def query_ascent_data():
                                 params=query_params,
                                 cookies=session.cookies,
                                 headers=query_headers)
-        if response.status_code == 404:
-            raise Exception404
+        assert response.status_code != 404, f"Got 404 from {url}"
         return response.json()["NumRecords"]
 
     def get_all_sales(number_of_sales):
+        """Makes an API call to get the sales data
+            :return json of results"""
         query_params["recordCount"] = number_of_sales
         response = requests.get(f"{BASE_URL}/LandRecords/api/SalesHistoryService",
                                 params=query_params,
@@ -62,7 +58,7 @@ def query_ascent_data():
         return response.json()["Results"]
 
     def write_json(jsn):
-        with open("./data/ascent_data.csv", 'w') as fout:
+        with open("./data/ascent_data.json", 'w') as fout:
             fout.write(json.dumps(jsn))
 
     number_of_sales = get_number_of_sales()
@@ -71,26 +67,10 @@ def query_ascent_data():
 
 
 def process_ascent_data_to_csv():
-    STREETS = [
-        "Sienna Ct",
-        "Debby Ln",
-        "Prairie Crossing Dr",
-        "Meadow Rose Ct",
-        "Scenic Way",
-        "Wild Ginger Way",
-        "Goldenrod Ln",
-        "Perennial Pkwy",
-        "Morris St",
-        "Button Bush Dr",
-        "White Manor Ct",
-        "Dana Dr",
-        "Monica Dr",
-        "Dunkelow Rd",
-        "Lynndale Ln",
-        "Morgan Ct",
-        "Meadow Park Ln"
-    ]
-    with open("./data/ascent_data.csv", 'r') as fin:
+    """ascent_data.json -> Neighborhood_Sales.csv
+    Extracts the properties of interest per the STREETS constant
+    and write the filtered data to a CSV file"""
+    with open("./data/ascent_data.json", 'r') as fin:
         jsn = json.load(fin)
         with open("./data/Neighborhood_Sales.csv", 'w') as fout:
             writer = csv.writer(fout)
@@ -102,11 +82,15 @@ def process_ascent_data_to_csv():
 
 
 def dict_to_html_filename(d):
+    """Small helper function to match a dictionary of property data up with a file name
+        :return str"""
     long_parcel_num = d["ParcelNumber"]
     return "./data/" + long_parcel_num + "_" + d["SiteAddress"] + ".html"
 
 
 def query_univers_data():
+    """For each property in the Neighborhood Sales file, query univers for more information
+    writing the html response to disk for later use"""
     with open("./data/Neighborhood_Sales.csv", 'r') as fin:
         reader = csv.DictReader(fin)
         for row in reader:
@@ -119,6 +103,10 @@ def query_univers_data():
 
 
 def process_and_merge_datasets():
+    """Read in the Ascent data. Extract the relevant fields from each property as a dict.
+    Read the Univers html responses. Process them into a dictionary of data.
+    Merge the Ascent dict with the Univers dict for a given property. Append this to a list.
+    Write the collected data out to a CSV file."""
     combinedData = list()
     with open("./data/Neighborhood_Sales.csv", 'r') as fin:
         reader = csv.DictReader(fin)
@@ -158,6 +146,7 @@ def process_and_merge_datasets():
 
 
 def main():
+    """Call the functions in the correct order"""
     query_univers_data()
     process_ascent_data_to_csv()
     query_univers_data()
@@ -165,4 +154,6 @@ def main():
 
 
 if __name__ == "__main__":
+    """If this is the 'main' program being run (as opposed to being imported),
+    then execute the main function."""
     main()
