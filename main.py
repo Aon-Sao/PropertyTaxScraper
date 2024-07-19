@@ -6,12 +6,15 @@ import csv
 import json
 import pandas
 import requests
+
+print("Loading config.py")
 from config import *
 
 
 def query_ascent_data():
     """Finds how many sales have been made, retrieves data for all of them,
     and writes it to a single JSON file"""
+    print("Getting ascent session")
     session = requests.Session()
     session.get(f'{BASE_URL}/LandRecords/PropertyListing/RealEstateTaxParcel#/Search')
     session.get(f'{BASE_URL}/LandRecords/PropertyListing/SalesHistoryReport')
@@ -39,6 +42,7 @@ def query_ascent_data():
         >>> isinstance(get_number_of_sales(), int)  # This is a 'doctest' btw
         True
         """
+        print("Determining number of sales (ascent query 1)")
         url = f"{BASE_URL}/LandRecords/api/SalesHistoryService"
         response = requests.get(url,
                                 params=query_params,
@@ -50,6 +54,7 @@ def query_ascent_data():
     def get_all_sales(number_of_sales):
         """Makes an API call to get the sales data
             :return json of results"""
+        print("Obtaining ascent sales data (ascent query 2")
         query_params["recordCount"] = number_of_sales
         response = requests.get(f"{BASE_URL}/LandRecords/api/SalesHistoryService",
                                 params=query_params,
@@ -58,6 +63,7 @@ def query_ascent_data():
         return response.json()["Results"]
 
     def write_json(jsn):
+        print("Writing json to disk")
         with open("./data/ascent_data.json", 'w') as fout:
             fout.write(json.dumps(jsn))
 
@@ -70,6 +76,8 @@ def process_ascent_data_to_csv():
     """ascent_data.json -> Neighborhood_Sales.csv
     Extracts the properties of interest per the STREETS constant
     and write the filtered data to a CSV file"""
+    print("Filtering ascent data")
+    print("Writing filtered data to csv")
     with open("./data/ascent_data.json", 'r') as fin:
         jsn = json.load(fin)
         with open("./data/Neighborhood_Sales.csv", 'w') as fout:
@@ -91,11 +99,15 @@ def dict_to_html_filename(d):
 def query_univers_data():
     """For each property in the Neighborhood Sales file, query univers for more information
     writing the html response to disk for later use"""
+    print("Obtaining relevant univers data")
     with open("./data/Neighborhood_Sales.csv", 'r') as fin:
         reader = csv.DictReader(fin)
+        i = 0
         for row in reader:
+            i += 1
             long_parcel_num = row["ParcelNumber"]
             short_parcel_num = long_parcel_num[4:]
+            print(f"Making query {i}")
             response = requests.get("http://www.caledonia.univers-clt.com/view_property_R.php?account_no="
                                     + short_parcel_num + "&series_card=1")
             with open(dict_to_html_filename(row), 'w') as fout:
@@ -108,6 +120,7 @@ def process_and_merge_datasets():
     Merge the Ascent dict with the Univers dict for a given property. Append this to a list.
     Write the collected data out to a CSV file."""
     combinedData = list()
+    print("Processing and merging data")
     with open("./data/Neighborhood_Sales.csv", 'r') as fin:
         reader = csv.DictReader(fin)
         for row in reader:
@@ -139,6 +152,7 @@ def process_and_merge_datasets():
                     univers_dict[i[1]] = i[2] if str(i[2]) != "nan" else "Unknown"
             merged_dict = ascentData | univers_dict
             combinedData.append(merged_dict)
+    print("Writing final csv to disk")
     with open("./data/ascent_and_univers_data.csv", 'w') as fout:
         writer = csv.DictWriter(fout, combinedData[0].keys())
         writer.writeheader()
