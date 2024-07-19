@@ -161,7 +161,7 @@ def process_and_merge_datasets():
 
 def main():
     """Call the functions in the correct order"""
-    query_univers_data()
+    query_ascent_data()
     process_ascent_data_to_csv()
     query_univers_data()
     process_and_merge_datasets()
