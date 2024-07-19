@@ -71,7 +71,7 @@ def process_ascent_data_to_csv():
     Extracts the properties of interest per the STREETS constant
     and write the filtered data to a CSV file"""
     with open("./data/ascent_data.json", 'r') as fin:
-        jsn = json.load(fin)["Results"]
+        jsn = json.load(fin)
         with open("./data/Neighborhood_Sales.csv", 'w') as fout:
             writer = csv.writer(fout)
             writer.writerow(jsn[0].keys())
